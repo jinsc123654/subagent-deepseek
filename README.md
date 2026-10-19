@@ -25,6 +25,17 @@ flowchart TD
 
 流程的完整说明、三层职责、记忆维护和回传字段见 [docs/subagent-deepseek-三层协作协议.md](docs/subagent-deepseek-三层协作协议.md)；程序接入与 12 条协作规则见 [THREE-LAYER-WORKFLOW.md](THREE-LAYER-WORKFLOW.md)。
 
+### 架构视图
+
+<a href="docs/archify/bridge-architecture.html">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/archify/bridge-architecture-dark.png">
+    <img alt="subagent-deepseek 架构视图：Codex、MCP 桥接、直连 app-server、Harness 原生 worker 与项目记忆" src="docs/archify/bridge-architecture-light.png">
+  </picture>
+</a>
+
+架构图展示 MCP 桥接的两条执行路径（直连 Codex app-server / Harness 原生 worker）、项目协作工具、项目记忆和工作区授权。交互版：[docs/archify/bridge-architecture.html](docs/archify/bridge-architecture.html)（下载后用浏览器打开）。
+
 ## 安装
 
 面向Linux，需Python3.11+、venv/pip、Codex及网络。Harness、Codex和测试浏览器不随包分发。
