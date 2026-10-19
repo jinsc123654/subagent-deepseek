@@ -1,0 +1,18 @@
+{
+  "codex_binary": "/usr/lib/chatgpt/resources/codex",
+  "credential_file": "/absolute/path/to/private-deepseek-key",
+  "credential_type": "file",
+  "allowed_roots": [],
+  "model": "deepseek-flash",
+  "reasoning_effort": "high",
+  "mode": "read-only",
+  "timeout_seconds": 300,
+  "shutdown_grace_seconds": 3,
+  "max_concurrency": 2,
+  "harness_url": null,
+  "harness_launch_log": null,
+  "harness_provider": "deepseek-account",
+  "workspace_policy": "codex-trust",
+  "workspace_registry": null,
+  "codex_config_file": null
+}

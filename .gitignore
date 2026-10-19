@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# 本机私有运行状态
+settings.json
+settings.json.*
+.harness-auth.json
+harness-sessions.json
+harness-sessions.lock
+*.lock
+!requirements.lock
+activity/
+backups/
+config-before-install-*.toml
+harness-acceptance.json
+
+# 项目/Agent 工作记录
+AGENTS.md
+DEEPSEEK_PROJECT.md
+DEEPSEEK_COORDINATION.md
+DEEPSEEK_*.md
+.deepseek-*.json
+docs/agent/
+.mimosa/
+.zcode/
+INSTALLATION.md
+UPGRADE-REVIEW.md
+
+# OS/编辑器
+.DS_Store
+*.swp
+*.bak

@@ -1,0 +1,221 @@
+diff --git a/packages/client/ui-workspace/src/client/rows/Rows.tsx b/packages/client/ui-workspace/src/client/rows/Rows.tsx
+index 216a6fc00f..828470f185 100644
+--- a/packages/client/ui-workspace/src/client/rows/Rows.tsx
++++ b/packages/client/ui-workspace/src/client/rows/Rows.tsx
+@@ -231,8 +231,8 @@ export function ProjectRowItem({ group, containsCurrentDescendant = false, onTog
+   t: RowTranslate
+ }) {
+   const row = group
+-  // The ungrouped bucket has no workspace title: its label is dictionary copy.
+-  const label = row.workspaceId === undefined ? t('group.ungrouped') : row.label
++  // Virtual source groups carry a label; only the empty ungrouped bucket uses dictionary copy.
++  const label = row.label || t('group.ungrouped')
+   const active = containsCurrentDescendant || (group.expanded && group.containsCurrent)
+   const [menuOpen, setMenuOpen] = useState(false)
+   const workspaceMenuItems = [
+diff --git a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx b/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx
+index df871654ee..83201de737 100644
+--- a/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx
++++ b/packages/client/ui-workspace/src/client/rows/WorkspaceBrowser.tsx
+@@ -34,7 +34,7 @@ import type { WorkspaceBrowserProps } from '../contract/slots.ts'
+ import type { ArchivedFilter, GroupNode, SessionNode, SessionOrderBy, SessionRowState } from '../tree.ts'
+ import {
+   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
+-  pinCurrentBlank, reconcileManualOrder, sessionMemberIds, UNGROUPED_KEY,
++  pinCurrentBlank, reconcileManualOrder, sessionMemberIds, CODEX_GROUP_KEY, UNGROUPED_KEY,
+ } from '../tree.ts'
+ import { ProjectRowItem, SearchResultItem, SessionNodeItem } from './Rows.tsx'
+ import { AnimatedRows } from './AnimatedRows.tsx'
+@@ -332,7 +332,7 @@ function SessionTree({
+     : Object.values(list.byId).find(session => (session.retainedBy.mainView ?? 0) > 0)?.id
+   const revealGroup = revealSessionId === undefined || !workspaceReady
+     ? undefined
+-    : owningGroupKey(workspaces, revealSessionId)
++    : owningGroupKey(workspaces, revealSessionId, list.byId)
+   // Per-group raised watermarks; an absent key means the base watermark.
+   const [storedWatermarks, setStoredWatermarks] = useState<Readonly<Record<string, number>>>({})
+   // Advances on user-driven watermark changes so AnimatedRows settles them; automatic raises animate.
+@@ -346,7 +346,7 @@ function SessionTree({
+   useNativeDragAcceptance(nativeDragActive)
+   const currentGroup = current === undefined || !workspaceReady
+     ? undefined
+-    : owningGroupKey(workspaces, current)
++    : owningGroupKey(workspaces, current, list.byId)
+   useEffect(() => {
+     if (current === undefined || currentGroup === undefined || Object.hasOwn(groupExpansion, currentGroup)) return
+     setGroupExpanded(currentGroup, true)
+@@ -369,8 +369,8 @@ function SessionTree({
+   }, [currentGroup, parents])
+   const expandedGroups = useMemo(() => {
+     const ancestorKeys = new Set<string | undefined>(parents.values())
+-    return [...workspaces.map(workspace => workspace.workspaceId), UNGROUPED_KEY]
+-      .filter(key => groupExpansion[key] ?? ancestorKeys.has(key))
++    return [...workspaces.map(workspace => workspace.workspaceId), CODEX_GROUP_KEY, UNGROUPED_KEY]
++      .filter(key => groupExpansion[key] ?? (key === CODEX_GROUP_KEY || ancestorKeys.has(key)))
+   }, [groupExpansion, parents, workspaces])
+   const groups = useMemo(
+     () => deriveGroups(list, workspaces, rowState, statuses, {
+@@ -632,7 +632,7 @@ function SessionTree({
+               onReveal={node.id === revealSessionId && group.key === revealGroup
+                 ? () => { onSessionRevealed(node.id) }
+                 : undefined}
+-              drag={dragProps}
++              drag={group.key === CODEX_GROUP_KEY ? undefined : dragProps}
+               t={t}
+             />
+           )
+@@ -1025,6 +1025,7 @@ export function WorkspaceBrowser({
+     if (workspacePhase !== 'ready') return
+     actions.retainAccountKeys([
+       UNGROUPED_KEY,
++      CODEX_GROUP_KEY,
+       FLAT_SESSION_ORDER_KEY,
+       ...workspaces.map(workspace => workspace.workspaceId),
+     ])
+diff --git a/packages/client/ui-workspace/src/client/tree.ts b/packages/client/ui-workspace/src/client/tree.ts
+index eb67d0ebe3..25e824004b 100644
+--- a/packages/client/ui-workspace/src/client/tree.ts
++++ b/packages/client/ui-workspace/src/client/tree.ts
+@@ -17,16 +17,25 @@ import { workspaceTitleOf } from '@deepseek-ai/dsh-util-workspace-path'
+ /** Group key for Sessions outside every Workspace. */
+ export const UNGROUPED_KEY = ''
+ 
++/** Reserved sidebar account for bridge sessions carrying the durable [Codex] title marker. */
++export const CODEX_GROUP_KEY = '__codex_bridge__'
++/** Stable marker written by the local Codex bridge, not localized presentation text. */
++const CODEX_TITLE_PREFIX = '[Codex] '
++
++
+ /**
+  * Resolve the Workspace browser group that owns one Session.
+  * @param workspaces - authoritative Workspace membership.
+  * @param sessionId - Session whose browser group is required.
+- * @returns owning Workspace id, or {@link UNGROUPED_KEY} when no Workspace accounts for it.
++ * @param summaries - optional current titles for virtual source-group ownership.
++ * @returns source group, owning Workspace id, or {@link UNGROUPED_KEY}.
+  */
+ export function owningGroupKey(
+   workspaces: readonly WorkspaceView[],
+   sessionId: SessionId,
++  summaries?: SessionListState['byId'],
+ ): string {
++  if (summaries?.[sessionId]?.title?.startsWith(CODEX_TITLE_PREFIX)) return CODEX_GROUP_KEY
+   return (workspaces.find(workspace => workspace.sessionIds.includes(sessionId))
+     ?.workspaceId as string | undefined) ?? UNGROUPED_KEY
+ }
+@@ -68,7 +77,7 @@ export type SessionOrderBy = 'manual' | 'updated'
+ export interface GroupNode {
+   /** Group key: the workspace id or {@link UNGROUPED_KEY}. */
+   key: string
+-  /** Backing Workspace id; absent only for the ungrouped bucket. */
++  /** Backing Workspace id; absent for virtual source groups and Ungrouped. */
+   workspaceId: WorkspaceId | undefined
+   cwd: string | undefined
+   /** Workspace creation time (epoch ms); absent only for the ungrouped bucket. */
+@@ -340,14 +349,24 @@ function groupByWorkspace(
+ ): Group[] {
+   const current = mainSessionId(list)
+   const groups: Group[] = []
+-  const accounted = new Set<SessionId>()
++  const codex = list.ids.flatMap(id => {
++    const session = list.byId[id]
++    return session?.title?.startsWith(CODEX_TITLE_PREFIX) ? [session] : []
++  })
++  const codexIds = new Set(codex.map(session => session.id))
++  const codexMembers = codex.filter(session => sessionVisible(session, current, archived, archivedFilter))
++  if (codexMembers.length > 0) {
++    groups.push(buildGroup(CODEX_GROUP_KEY, undefined, undefined, undefined,
++      CODEX_TITLE_PREFIX.slice(1, -2), orderedUngrouped(codexMembers, undefined, list.byId)))
++  }
++  const accounted = new Set<SessionId>(codexIds)
+   for (const workspace of workspaces) {
+     const members: SessionSummary[] = []
+     for (const id of workspace.sessionIds) {
+       const summary = list.byId[id]
+       if (summary === undefined) continue // account may lead the list pull; the row appears when the summary lands
+       accounted.add(id)
+-      if (!sessionVisible(summary, current, archived, archivedFilter)) continue
++      if (codexIds.has(id) || !sessionVisible(summary, current, archived, archivedFilter)) continue
+       members.push(summary)
+     }
+     // The archived-only view lists archives, not the Workspace inventory, so
+@@ -446,7 +465,7 @@ export function deriveGroups(
+   const current = mainSessionId(list)
+   const currentGroup = current === undefined
+     ? undefined
+-    : owningGroupKey(workspaces, current)
++    : owningGroupKey(workspaces, current, list.byId)
+   const groups: GroupNode[] = []
+   for (const g of groupByWorkspace(list, workspaces, archived, rowState.archivedFilter, view.ungroupedOrder)) {
+     const expanded = expandedGroups.has(g.key)
+diff --git a/packages/client/ui-workspace/tests/tree.client.spec.ts b/packages/client/ui-workspace/tests/tree.client.spec.ts
+index 9fb549c5bd..7d68fd0e8f 100644
+--- a/packages/client/ui-workspace/tests/tree.client.spec.ts
++++ b/packages/client/ui-workspace/tests/tree.client.spec.ts
+@@ -9,7 +9,7 @@ import type { SessionProjectionSnapshot } from '@deepseek-ai/dsh-api-session-con
+ import {
+   type ArchivedFilter,
+   deriveFlat, deriveGroups, deriveSearchResults, orderByRecency, owningGroupKey, owningParentFolder,
+-  pinCurrentBlank, reconcileManualOrder, sessionMemberIds, visibleSessionIds, workspaceLabel, UNGROUPED_KEY,
++  pinCurrentBlank, reconcileManualOrder, sessionMemberIds, visibleSessionIds, workspaceLabel, CODEX_GROUP_KEY, UNGROUPED_KEY,
+ } from '../src/client/tree.ts'
+ import { createWorkspaceViewStore } from '../src/client/stores.ts'
+ 
+@@ -885,3 +885,33 @@ it('leaves unnamed history titles empty for locale-owned row labels', () => {
+   const sessions = list(item)
+   expect(deriveFlat(sessions, [item.id], noRows, noAttention)[0]?.title).toBe('')
+ })
++
++
++describe('Codex bridge source group', () => {
++  it('groups marked sessions across projects once, preserving original workspace membership', () => {
++    const first = { ...summary('first', 1), title: '[Codex] First' }
++    const second = { ...summary('second', 2), title: '[Codex] Second' }
++    const ordinary = summary('ordinary', 3)
++    const state = withMain(list(first, second, ordinary), first.id)
++    const projects = [workspace('alpha', ['first', 'ordinary']), workspace('beta', ['second'])]
++    const groups = deriveGroups(state, projects, noRows, noAttention, view([CODEX_GROUP_KEY, 'alpha', 'beta']))
++    const codex = groups.find(group => group.key === CODEX_GROUP_KEY)!
++    expect(codex.label).toBe('Codex')
++    expect(codex.sessions.map(session => session.id)).toEqual([second.id, first.id])
++    expect(codex.containsCurrent).toBe(true)
++    expect(groups.find(group => group.key === 'alpha')!.sessions.map(session => session.id)).toEqual([ordinary.id])
++    expect(projects[0]!.sessionIds).toEqual([first.id, ordinary.id])
++    expect(owningGroupKey(projects, first.id, state.byId)).toBe(CODEX_GROUP_KEY)
++  })
++
++  it('keeps archive filtering and folding on the virtual group', () => {
++    const session = { ...summary('item', 1), title: '[Codex] Task' }
++    const state = list(session)
++    expect(deriveGroups(state, [], rowState({ archived: ['item'] }), noAttention, view([CODEX_GROUP_KEY]))).toEqual([])
++    const shown = deriveGroups(state, [], rowState({ archived: ['item'], archivedFilter: 'only' }), noAttention, view([]))
++    expect(shown[0]!.key).toBe(CODEX_GROUP_KEY)
++    expect(shown[0]!.sessionCount).toBe(1)
++    expect(shown[0]!.expanded).toBe(false)
++    expect(shown[0]!.sessions).toEqual([])
++  })
++})
+diff --git a/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx b/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
+index 4b62826cbc..bbf1f9742f 100644
+--- a/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
++++ b/packages/client/ui-workspace/tests/workspace-browser.client.spec.tsx
+@@ -2655,3 +2655,19 @@ describe('Workspace tree grouping', () => {
+     expect(b.props.insertWorkspaceBefore).toHaveBeenCalledWith(wid('alpha'), wid('gamma'))
+   })
+ })
++
++
++it('shows a collapsible Codex source group without moving the project sessions', () => {
++  const marked = summary('bridge', 2, { title: '[Codex] Review', displayTitle: '[Codex] Review' })
++  const ordinary = summary('ordinary', 1)
++  mount({
++    useSessions: hook(sessionState([marked, ordinary])),
++    useWorkspaces: hook(workspaceState([workspace('project', ['bridge', 'ordinary'])])),
++  })
++  expect(screen.getByText('Codex', { exact: true })).toBeTruthy()
++  expect(screen.getByText('[Codex] Review')).toBeTruthy()
++  fireEvent.click(screen.getByText('Codex', { exact: true }))
++  expect(screen.queryByText('[Codex] Review')).toBeNull()
++  fireEvent.click(screen.getByText('Codex', { exact: true }))
++  expect(screen.getByText('[Codex] Review')).toBeTruthy()
++})

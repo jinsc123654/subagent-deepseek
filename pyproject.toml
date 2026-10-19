@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subagent-deepseek"
+version = "0.9.1"
+description = "DeepSeek subagent MCP bridge over Codex app-server"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["mcp==1.30.0", "PyYAML>=6,<7", "httpx>=0.28,<1"]
+license = {text = "MIT"}
+
+[project.scripts]
+subagent-deepseek = "subagent_deepseek.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+subagent_deepseek = ["models.json", "workflow_policy.md", "dual_workflow.md", "three_layer_workflow.md"]

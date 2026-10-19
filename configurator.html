@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>DeepSeek · 配置工作台</title>
+<style>
+:root{font:15px/1.65 system-ui,sans-serif;color:#172c3b;background:#f3f6f8;--accent:#176c62}*{box-sizing:border-box}body{margin:0}main{max-width:1200px;margin:auto;padding:42px 24px}header{margin-bottom:28px}.tag{font-size:12px;letter-spacing:.15em;color:var(--accent);font-weight:700}h1{font-size:34px;margin:8px 0}h2{font-size:19px;margin:0 0 18px}p{color:#5e717c;margin:8px 0}.layout{display:grid;grid-template-columns:1.1fr 1fr;gap:24px}.card{background:white;border:1px solid #dce5e8;border-radius:16px;padding:26px;margin-bottom:20px}.preview{position:sticky;top:20px}.row{display:grid;grid-template-columns:1fr 1fr;gap:18px}label{display:block;font-weight:650;margin:16px 0 5px}input,select,textarea{width:100%;padding:11px;border:1px solid #b8c9d1;border-radius:8px;font:inherit;background:#fff;color:inherit}textarea{resize:vertical}input[type=checkbox]{width:auto;accent-color:var(--accent);margin-right:8px}small{display:block;color:#667d87;margin-top:5px}button,.button{display:inline-block;border:1px solid #b9ccc9;border-radius:8px;padding:10px 16px;background:white;color:#214a43;cursor:pointer;font:inherit;font-weight:650}button.primary{background:var(--accent);color:white;border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,.button:focus-within{outline:3px solid #79b9f4;outline-offset:3px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}pre{background:#112831;color:#d8eae9;padding:20px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.8 ui-monospace,monospace;max-height:580px;overflow:auto}.notice{padding:13px 16px;border-radius:9px;background:#eef6f4;color:#305b52;font-size:13px}.warning{background:#fff3df;color:#83520c}.errors{background:#fff0ef;color:#943c33;padding:12px;border-radius:8px}.status{font-size:13px;margin-top:12px;min-height:24px}.hidden{display:none}details{margin-top:20px}summary{cursor:pointer;font-weight:650}footer{font-size:13px;color:#68808b;margin-top:28px}@media(max-width:850px){.layout{grid-template-columns:1fr}.preview{position:static}main{padding:24px 16px}.row{grid-template-columns:1fr}h1{font-size:28px}}
+</style>
+<main><header><div class="tag">SUBAGENT DEEPSEEK / LOCAL SETTINGS</div><h1>配置你的 DeepSeek 协作助手</h1><p>主 Agent 规划与审阅，DeepSeek 执行。填写路径，检查配置，再下载到安装目录。</p><div class="actions"><label class="button" style="margin:0">导入现有 JSON<input id="importFile" type="file" accept=".json,application/json" hidden></label><button id="reset" type="button">恢复示例</button></div><div id="importStatus" class="status" role="status"></div></header>
+<div class="layout"><form id="form" novalidate><section class="card"><h2>01 · 运行环境</h2><div class="notice">这里只配置 DeepSeek 及其连接。页面不读取密钥、不联网、不保存浏览器记录。</div><div id="environment"></div><small>请填写真实的 Linux 绝对路径。浏览器无法确认文件是否存在；安装后的运行时会再次检查。凭据文件应属于当前用户，权限为 600。</small></section>
+<section class="card"><h2>02 · DeepSeek 执行设置</h2><div class="notice">默认读取 Codex 已信任项目，无需逐个填写目录或安装 Hook。撤销信任后同步拒绝；执行权限仍按当前父 Agent 授权。</div><div id="execution"></div><div id="danger" class="notice warning hidden">完全访问会给予独立执行任务更广的访问权限。请确认符合你对该任务的授权。</div><details><summary>高级集成设置 · 一般无需修改</summary><div id="integration"></div><label for="allowed_roots">允许的项目目录 · 每行一个</label><textarea id="allowed_roots" rows="4" spellcheck="false"></textarea><small>仅用于检查任务起始目录，并非完整的文件系统沙箱；实际执行限制由运行时提供。</small><div id="advanced"></div></details></section>
+<section class="card"><h2>03 · DeepSeek 网页连接（三层协调必需）</h2><label><input id="harnessEnabled" type="checkbox">启用已经运行的本机 Harness</label><p>三层协调需要此连接；独立 worker 可关闭。不会自动安装或启动 Harness。</p><fieldset id="harnessFields" style="border:0;padding:0;margin:0"><div id="harness"></div></fieldset><details><summary>生成 Harness 启动脚本</summary><label for="harness_repo">Harness 源码安装目录</label><input id="harness_repo" type="text" placeholder="/absolute/path/to/deepseek-harness" spellcheck="false"><small>此路径只用于生成脚本，不写入 settings.json。需要已安装 Node / pnpm 和 Harness 依赖。</small><div class="actions"><button id="launcher" type="button">下载网页启动脚本 .sh</button></div><small>下载后运行 bash 网页启动-配置生成.sh，保持终端打开；Ctrl+C 停止。脚本沿用上方地址、端口及启动日志，日志只允许当前用户访问。若服务已启动，脚本会拒绝重复启动，不会结束现有进程。</small><small>若已有自己的启动器，也可运行：bash /你的路径/网页启动.sh start。确认它写入上方相同的启动日志。</small></details><div class="notice">网页任务的权限按每次传入的父 Agent 模式同步。“帮我审批”和完全访问映射为 Harness 完全访问；这里的独立任务权限不控制网页任务。</div></section></form>
+<aside><section class="card preview"><h2>配置预览</h2><div class="notice">模型：DeepSeek Flash · 思考强度：high<br>当前版本固定，不支持修改。</div><pre id="json" aria-label="JSON 配置预览"></pre><div id="errors" class="errors hidden" role="alert"></div><div class="actions"><button id="download" class="primary" type="button">下载 settings.json</button><button id="copy" type="button">复制 JSON</button></div><div id="status" class="status" role="status"></div><details open><summary>下载后怎么使用？</summary><ol><li>将下载的文件放入解压后的 subagent-deepseek 安装目录。</li><li>如果已有 settings.json，请先备份再替换。</li><li>按 README 完成 MCP 注册，再重新加载 MCP 或重启 Codex。</li></ol><small>页面不会直接修改配置、Codex 注册或协作规则。字段有效不代表本机文件与服务已经就绪。</small></details></section></aside></div><footer>离线配置工作台 · 与 subagent-deepseek 0.9.1 配置格式配套 · 你可以保留本 HTML 重复使用</footer></main>
+<script>
+'use strict';
+const defaults={codex_binary:'/usr/lib/chatgpt/resources/codex',credential_file:'/absolute/path/to/private-deepseek-key',credential_type:'file',allowed_roots:[],workspace_policy:'codex-trust',workspace_registry:null,codex_config_file:null,model:'deepseek-flash',reasoning_effort:'high',mode:'read-only',timeout_seconds:300,shutdown_grace_seconds:3,max_concurrency:2,harness_url:null,harness_launch_log:null,harness_provider:'deepseek-account'};
+const $=id=>document.getElementById(id);
+const fields=[['integration','workspace_policy','项目目录来源','select',[['codex-trust','跟随 Codex 已信任项目（推荐）'],['codex-hook','受信任 Hook 登记的活动会话'],['allowlist','旧版手动白名单']]],['integration','codex_config_file','Codex 信任配置 · 留空使用 CODEX_HOME/config.toml','text'],['integration','workspace_registry','Hook 登记文件 · 非Hook模式无需填写','text'],['integration','codex_binary','Codex 可执行文件','text'],['environment','credential_file','密钥文件路径','text'],['environment','credential_type','凭据格式','select',[['file','纯文本 API Key 文件'],['dsh','Harness YAML · refs.DEEPSEEK_API_KEY']]],['integration','mode','独立任务权限','select',[['read-only','只读'],['workspace-write','允许工作区写入'],['danger-full-access','完全访问']]],['execution','timeout_seconds','独立任务超时 · 秒','number'],['execution','max_concurrency','独立任务最大并发 · 1–16','number'],['advanced','shutdown_grace_seconds','退出清理宽限时间 · 秒','number'],['harness','harness_url','本机网页地址','text'],['harness','harness_launch_log','Harness 启动日志绝对路径','text'],['harness','harness_provider','网页模型提供方','select',[['deepseek-account','网页已有账号'],['deepseek-official','Harness 官方 API 配置']]]];
+for(const [group,id,title,type,choices]of fields){const label=document.createElement('label');label.htmlFor=id;label.textContent=title;const el=document.createElement(type==='select'?'select':'input');el.id=id;if(type==='select'){for(const [value,text]of choices){const o=document.createElement('option');o.value=value;o.textContent=text;el.append(o)}}else{el.type=type;el.spellcheck=false;if(type==='number'){el.min='0.001';el.max=id==='max_concurrency'?'16':'3600';el.step=id==='max_concurrency'?'1':'any'}}$(group).append(label,el)}
+const absolute=s=>typeof s==='string'&&s.startsWith('/')&&s.length>1&&!/[\x00-\x1f]/.test(s);
+function validate(c){const errors=[];if(!c||typeof c!=='object'||Array.isArray(c))return ['配置必须是 JSON 对象'];for(const key of Object.keys(c))if(!Object.hasOwn(defaults,key))errors.push('不支持的字段：'+key);for(const key of Object.keys(defaults))if(!Object.hasOwn(c,key))errors.push('缺少字段：'+key);
+for(const key of ['codex_binary','credential_file'])if(!absolute(c[key]))errors.push(key+' 必须是绝对文件路径');
+if(!Array.isArray(c.allowed_roots)||(c.workspace_policy==='allowlist'&&!c.allowed_roots.length)||!c.allowed_roots.every(absolute))errors.push('至少填写一个有效的绝对项目目录');
+if(!['allowlist','codex-hook','codex-trust'].includes(c.workspace_policy))errors.push('项目目录来源无效');if(c.codex_config_file!==null&&!absolute(c.codex_config_file))errors.push('Codex信任配置必须为绝对路径或null');if(c.workspace_registry!==null&&!absolute(c.workspace_registry))errors.push('工作区登记文件必须为绝对路径或null');for(const [key,allowed]of [['credential_type',['file','dsh']],['mode',['read-only','workspace-write','danger-full-access']],['model',['deepseek-flash']],['reasoning_effort',['high']],['harness_provider',['deepseek-account','deepseek-official']]])if(!allowed.includes(c[key]))errors.push(key+' 的选项不受支持');
+for(const key of ['timeout_seconds','shutdown_grace_seconds'])if(typeof c[key]!=='number'||!Number.isFinite(c[key])||c[key]<=0||c[key]>3600)errors.push(key+' 必须大于 0 且不超过 3600');
+if(!Number.isInteger(c.max_concurrency)||c.max_concurrency<1||c.max_concurrency>16)errors.push('并发数必须是 1–16 的整数');
+if(c.harness_url!==null){try{if(typeof c.harness_url!=='string'||c.harness_url!==c.harness_url.trim())throw 0;const u=new URL(c.harness_url);if(u.protocol!=='http:'||!['127.0.0.1','localhost','[::1]'].includes(u.hostname)||u.username||u.password||u.search||u.hash||u.pathname!=='/'||/[?#@]/.test(c.harness_url)||!/^http:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::[0-9]+)?\/?$/.test(c.harness_url))throw 0}catch{errors.push('网页地址必须是纯本机 HTTP 地址，例如 http://127.0.0.1:3080')}if(!absolute(c.harness_launch_log))errors.push('启用网页时必须填写启动日志绝对路径')}else if(c.harness_launch_log!==null)errors.push('关闭网页模式时启动日志必须为 null');return errors}
+function read(){const c={...defaults};for(const [,id,,type]of fields)c[id]=type==='number'?($(id).value.trim()===''?null:Number($(id).value)):$(id).value;if(c.workspace_registry==='')c.workspace_registry=null;if(c.codex_config_file==='')c.codex_config_file=null;c.allowed_roots=[...new Set($('allowed_roots').value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean))];if(!$('harnessEnabled').checked){c.harness_url=null;c.harness_launch_log=null}return c}
+function apply(c){for(const [,id]of fields)$(id).value=c[id]??(id==='harness_url'?'http://127.0.0.1:3080':'');$('allowed_roots').value=c.allowed_roots.join('\n');$('harnessEnabled').checked=c.harness_url!==null;render()}
+function render(){const c=read();const errors=validate(c);$('harnessFields').disabled=!$('harnessEnabled').checked;$('danger').classList.toggle('hidden',c.mode!=='danger-full-access');$('json').textContent=JSON.stringify(c,null,2);$('errors').replaceChildren();$('errors').classList.toggle('hidden',!errors.length);for(const error of errors){const line=document.createElement('div');line.textContent='• '+error;$('errors').append(line)}$('download').disabled=$('copy').disabled=!!errors.length;$('status').textContent=errors.length?'请修正以上配置后再导出。':'格式检查通过；仍需确认路径存在和服务已运行。';return {c,errors}}
+$('form').addEventListener('input',render);$('form').addEventListener('change',render);$('form').addEventListener('submit',e=>e.preventDefault());
+$('reset').onclick=()=>{apply(defaults);$('importStatus').textContent='已恢复示例，请替换示例路径。'};
+$('download').onclick=()=>{const {c,errors}=render();if(errors.length)return;const url=URL.createObjectURL(new Blob([JSON.stringify(c,null,2)+'\n'],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='settings.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('status').textContent='已请求下载 settings.json；原有配置未被修改。'};
+$('copy').onclick=async()=>{const {c,errors}=render();if(errors.length)return;try{await navigator.clipboard.writeText(JSON.stringify(c,null,2));$('status').textContent='已复制配置。'}catch{$('status').textContent='浏览器不允许复制，请从预览手动复制或下载文件。'}};
+$('importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>131072)throw Error('文件超过 128 KB');const c=JSON.parse(await file.text());if(c&&typeof c==='object'&&!Array.isArray(c)){if(!Object.hasOwn(c,'workspace_policy'))c.workspace_policy='allowlist';if(!Object.hasOwn(c,'workspace_registry'))c.workspace_registry=null;if(!Object.hasOwn(c,'codex_config_file'))c.codex_config_file=null}const errors=validate(c);if(errors.length)throw Error(errors.join('；'));apply(c);$('importStatus').textContent='导入成功。只在本页处理，未上传。'}catch(error){$('importStatus').textContent='导入失败，原表单已保留：'+error.message}finally{e.target.value=''}};
+function shellQuote(value){return "'"+value.replace(/'/g,"'\\''")+"'"}
+function launcherText(c,repo){const u=new URL(c.harness_url);const host=u.hostname==='localhost'?'127.0.0.1':u.hostname.replace(/[\[\]]/g,'');const port=Number(u.port||80);if(port<1||port>65535)throw Error('启动端口必须在 1–65535');return [
+'#!/usr/bin/env bash',
+'# Generated locally by subagent-deepseek configuration page. Foreground; Ctrl+C to stop.',
+'set -euo pipefail',
+'umask 077',
+'project_dir='+shellQuote(repo),
+'launch_log='+shellQuote(c.harness_launch_log),
+'listen_host='+shellQuote(host),
+'listen_port='+shellQuote(String(port)),
+'[[ -f "$project_dir/package.json" ]] || { echo "Harness 源码目录无效" >&2; exit 1; }',
+'if ! command -v pnpm >/dev/null 2>&1; then',
+'  if [[ -s "$HOME/.nvm/nvm.sh" ]]; then',
+'    set +u',
+'    source "$HOME/.nvm/nvm.sh"',
+'    nvm use 24 >/dev/null',
+'    set -u',
+'  fi',
+'fi',
+'command -v pnpm >/dev/null || { echo "请先安装 Node 和 pnpm" >&2; exit 1; }',
+'command -v python3 >/dev/null || { echo "请先安装 Python 3" >&2; exit 1; }',
+'command -v flock >/dev/null || { echo "请先安装 util-linux (flock)" >&2; exit 1; }',
+'mkdir -p -- "$(dirname -- "$launch_log")"',
+'[[ ! -L "$launch_log" && ! -L "$launch_log.launcher.lock" ]] || { echo "日志和锁文件不能是符号链接" >&2; exit 1; }',
+'exec 9>"$launch_log.launcher.lock"',
+'flock -n 9 || { echo "此启动脚本已在运行" >&2; exit 1; }',
+'python3 - "$listen_host" "$listen_port" <<\'PY_CHECK_PORT\'',
+'import socket,sys',
+'host,port=sys.argv[1],int(sys.argv[2])',
+'family=socket.AF_INET6 if ":" in host else socket.AF_INET',
+'with socket.socket(family,socket.SOCK_STREAM) as sock:',
+'    try: sock.bind((host,port))',
+'    except OSError: sys.exit("端口已占用或无法监听；请确认是否已有 Harness，勿重复启动。")',
+'PY_CHECK_PORT',
+'if [[ -e "$launch_log" ]]; then',
+'  [[ -f "$launch_log" && -O "$launch_log" ]] || { echo "日志必须是当前用户拥有的普通文件" >&2; exit 1; }',
+'fi',
+'cd -- "$project_dir"',
+': >> "$launch_log"',
+'chmod 600 -- "$launch_log"',
+'echo "Harness 将在前台启动；日志含私有登录信息，请勿分享。Ctrl+C 停止。"',
+'pnpm dsh web --host "$listen_host" --port "$listen_port" 2>&1 | tee -a "$launch_log"',
+''].join('\n')}
+$('launcher').onclick=()=>{try{const {c,errors}=render();if(errors.length)throw Error(errors.join('；'));if(!c.harness_url)throw Error('请先启用 Harness 网页联动并填写地址和日志');const repo=$('harness_repo').value.trim();if(!absolute(repo))throw Error('请填写 Harness 源码的绝对目录');const text=launcherText(c,repo);const url=URL.createObjectURL(new Blob([text],{type:'text/x-shellscript'}));const a=document.createElement('a');a.href=url;a.download='网页启动-配置生成.sh';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('status').textContent='已下载启动脚本；运行后保持终端打开，再让 Codex 连接 Harness。'}catch(e){$('status').textContent='无法生成启动脚本：'+e.message}};
+apply(defaults);
+</script></html>

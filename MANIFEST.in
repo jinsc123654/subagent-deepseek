@@ -1,0 +1,14 @@
+include HARNESS.md README.md LICENSE THIRD_PARTY.md VALIDATION.md settings.example.json requirements.lock
+recursive-include tests *.py
+
+include WORKFLOW.md install.sh
+
+include configurator.html
+
+include QUICKSTART.md UPGRADE-REVIEW.md
+
+include DUAL-WORKFLOW.md
+
+include THREE-LAYER-WORKFLOW.md
+
+include TASK-HANDOFF.md
