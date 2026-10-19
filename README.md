@@ -3,38 +3,18 @@
 默认三层：**Codex顶层审查 → DeepSeek协调层（记忆、分发、汇总）→ 分析/实现/测试worker**。
 首次使用阅读 QUICKSTART.md；完整角色协议见 THREE-LAYER-WORKFLOW.md。
 
-## 架构
-
-```mermaid
-flowchart TD
-    C["第一层：Codex<br/>目标、关键决策、顶层审查与最终验收"]
-    D["第二层：DeepSeek 协调 Agent<br/>上下文与记忆承接、拆分、分发、调度、汇总"]
-    A["第三层：分析子 Agent"]
-    I["第三层：实现子 Agent"]
-    T["第三层：测试子 Agent"]
-    C -->|问题、目标、范围、决策与验收标准| D
-    D --> A
-    D --> I
-    D --> T
-    A -->|分析与证据| D
-    I -->|改动与验证| D
-    T -->|测试结果与异常| D
-    D -->|阶段摘要、证据、风险与待决问题| C
-    C -->|审阅结论或下一轮工作包| D
-```
+## 架构视图
 
 流程的完整说明、三层职责、记忆维护和回传字段见 [docs/subagent-deepseek-三层协作协议.md](docs/subagent-deepseek-三层协作协议.md)；程序接入与 12 条协作规则见 [THREE-LAYER-WORKFLOW.md](THREE-LAYER-WORKFLOW.md)。
 
-### 架构视图
-
 <a href="docs/archify/bridge-architecture.html">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/archify/bridge-architecture-dark.png">
-    <img alt="subagent-deepseek 架构视图：Codex、MCP 桥接、直连 app-server、Harness 原生 worker 与项目记忆" src="docs/archify/bridge-architecture-light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/archify/bridge-architecture-dark.gif">
+    <img alt="subagent-deepseek 架构视图：Codex、MCP 桥接、直连 app-server、Harness 原生 worker 与项目记忆" src="docs/archify/bridge-architecture-light.gif">
   </picture>
 </a>
 
-架构图展示 MCP 桥接的两条执行路径（直连 Codex app-server / Harness 原生 worker）、项目协作工具、项目记忆和工作区授权。交互版：[docs/archify/bridge-architecture.html](docs/archify/bridge-architecture.html)（下载后用浏览器打开）。
+架构图展示 MCP 桥接的两条执行路径（直连 Codex app-server / Harness 原生 worker）、项目协作工具、项目记忆和工作区授权。GIF 为 4 秒循环，按系统深浅色自动切换；完整交互版（缩放、路径、动效开关）见 [docs/archify/bridge-architecture.html](docs/archify/bridge-architecture.html)（下载后用浏览器打开）。
 
 ## 安装
 
