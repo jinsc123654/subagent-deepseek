@@ -56,3 +56,7 @@ worker 返回建议1–2KB：状态、实际动作、证据位置、首异常、
 此超时默认只授予“标准执行”模式，测试范围和权限另按用户当前授权；不能把超时当烧录/推送/长测确认。用户迟到的明确选择优先，Codex先检查活动修订再调整。已明确模式直接select，不重复询问。本次用户已要求继续改造，所以不重新计时。
 
 默认协调模式 project_collect 仅回传最多2000字符的阶段记忆、worker ID/状态和检查状态，完整证据与handoff保存在协调MD。按需 project_coordination 或 project_collect(include_details=true) 查看全文，避免默认重复传answer和报告。调查建议仅适用于其记录基线；后续Codex修改和最新用户决定优先。
+
+## v0.9.2 参数格式
+
+validation.resources必须是字符串列表，例如 `["source files only"]`；不能传单个字符串。codex_permission只能传read-only、workspace-write、approve-for-me或full-access中的单个值；长权限说明放constraints。工具schema已明确字段和枚举，错误返回具体字段，不把不明确权限自动转换成更宽模式。mode=none时checks仅列运行测试NOT_RUN，静态调查PASS放children与memory。修复不会自动重发已失败的任务或修改其他聊天的审阅结论。

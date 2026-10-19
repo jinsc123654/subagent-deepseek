@@ -1,5 +1,17 @@
 """Validation scope and evidence layout; instructions, not an execution sandbox."""
 from pathlib import PurePosixPath, Path
+from typing import Literal, Annotated
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ValidationPlan(BaseModel):
+    """Typed tool input: resource names are a list, never a prose permission string."""
+    model_config = ConfigDict(extra='forbid', strict=True)
+    mode: Literal['inherit', 'smoke', 'targeted', 'full', 'stability', 'none', 'method-only'] = 'inherit'
+    timing: Literal['this-round', 'final'] = 'this-round'
+    budget_minutes: int = Field(default=0, ge=0, le=10080)
+    resources: list[Annotated[str, Field(min_length=1, max_length=256)]] = Field(default_factory=list, max_length=16)
+
 
 MODES = ('inherit', 'smoke', 'targeted', 'full', 'stability', 'none', 'method-only')
 
@@ -7,17 +19,17 @@ def validation_plan(value=None):
     if value is None:
         return {'mode': 'inherit', 'timing': 'this-round', 'budget_minutes': 0, 'resources': []}
     if not isinstance(value, dict) or set(value) - {'mode', 'timing', 'budget_minutes', 'resources'}:
-        raise ValueError('Invalid validation plan')
+        raise ValueError('validation must be an object containing only mode, timing, budget_minutes and resources')
     mode=value.get('mode', 'inherit'); timing=value.get('timing', 'this-round')
     budget=value.get('budget_minutes', 0); resources=value.get('resources', [])
     if mode not in MODES or timing not in ('this-round', 'final'):
-        raise ValueError('Invalid validation mode or timing')
+        raise ValueError('validation.mode or validation.timing has an unsupported value')
     if type(budget) is not int or not 0 <= budget <= 10080:
-        raise ValueError('Invalid validation time budget')
+        raise ValueError('validation.budget_minutes must be an integer from 0 to 10080')
     if not isinstance(resources, list) or len(resources)>16 or not all(isinstance(x,str) and 0<len(x)<=256 for x in resources):
-        raise ValueError('Invalid validation resources')
+        raise ValueError('validation.resources must be a list of up to 16 non-empty strings (each at most 256 characters), for example ["source files only"]')
     if mode in ('none', 'method-only') and budget:
-        raise ValueError('Skipped tests cannot reserve runtime')
+        raise ValueError('validation.budget_minutes must be 0 when validation.mode is none or method-only')
     return dict(mode=mode, timing=timing, budget_minutes=budget, resources=list(resources))
 
 def evidence_root(value='docs/agent/evidence'):

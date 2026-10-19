@@ -10,10 +10,8 @@ Codex 发现问题、分析需求和制定顶层目标，将一个有边界的�
 
 ```mermaid
 flowchart TD
-    C[第一层：Codex
-目标、关键决策、顶层审查与最终验收]
-    D[第二层：DeepSeek 协调 Agent
-上下文与记忆承接、拆分、分发、调度、汇总]
+    C["第一层：Codex<br/>目标、关键决策、顶层审查与最终验收"]
+    D["第二层：DeepSeek 协调 Agent<br/>上下文与记忆承接、拆分、分发、调度、汇总"]
     A[第三层：分析子 Agent]
     I[第三层：实现子 Agent]
     T[第三层：测试子 Agent]

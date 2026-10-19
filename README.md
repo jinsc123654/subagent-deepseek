@@ -1,7 +1,29 @@
-# subagent-deepseek 0.9.1
+# subagent-deepseek 0.9.2
 
 默认三层：**Codex顶层审查 → DeepSeek协调层（记忆、分发、汇总）→ 分析/实现/测试worker**。
 首次使用阅读 QUICKSTART.md；完整角色协议见 THREE-LAYER-WORKFLOW.md。
+
+## 架构
+
+```mermaid
+flowchart TD
+    C["第一层：Codex<br/>目标、关键决策、顶层审查与最终验收"]
+    D["第二层：DeepSeek 协调 Agent<br/>上下文与记忆承接、拆分、分发、调度、汇总"]
+    A["第三层：分析子 Agent"]
+    I["第三层：实现子 Agent"]
+    T["第三层：测试子 Agent"]
+    C -->|问题、目标、范围、决策与验收标准| D
+    D --> A
+    D --> I
+    D --> T
+    A -->|分析与证据| D
+    I -->|改动与验证| D
+    T -->|测试结果与异常| D
+    D -->|阶段摘要、证据、风险与待决问题| C
+    C -->|审阅结论或下一轮工作包| D
+```
+
+流程的完整说明、三层职责、记忆维护和回传字段见 [docs/subagent-deepseek-三层协作协议.md](docs/subagent-deepseek-三层协作协议.md)；程序接入与 12 条协作规则见 [THREE-LAYER-WORKFLOW.md](THREE-LAYER-WORKFLOW.md)。
 
 ## 安装
 
@@ -13,8 +35,8 @@
 
 ```toml
 [mcp_servers.subagent_deepseek]
-command = "/absolute/path/subagent-deepseek-0.9.1/.venv/bin/subagent-deepseek"
-args = ["--settings", "/absolute/path/subagent-deepseek-0.9.1/settings.json"]
+command = "/absolute/path/subagent-deepseek-0.9.2/.venv/bin/subagent-deepseek"
+args = ["--settings", "/absolute/path/subagent-deepseek-0.9.2/settings.json"]
 tool_timeout_sec = 3700
 ```
 
@@ -92,3 +114,7 @@ settings.json、认证Cookie、会话登记、工作区登记、活动日志和�
 信任配置须为当前用户拥有的普通文件，不允许组/其他用户写入或文件符号链接；格式错误无法验证时拒绝。目录信任仅是起始目录资格，**不等于全盘读写、不改变沙箱、不替代当前任务授权**；Harness仍按当前codex_permission同步执行权限。全局/云端/系统配置、临时CLI覆盖或仅UI状态不在本版解析范围，未落入此用户级信任来源时不会猜测放行。
 
 无需启用工作区Hook；安装器仅在显式选择 `codex-hook` 时安装该Hook。`allowlist`、`codex-hook` 保留原语义，旧设置不会自动迁移，需明确选择codex-trust。现有安装明确选择codex-trust后，重载MCP生效。新版本将目录授权错误单独报告；不存在项目记录时read返回空任务，不创建或修改项目文件。
+
+## v0.9.2 参数格式
+
+validation.resources必须是字符串列表，例如 `["source files only"]`；不能传单个字符串。codex_permission只能传read-only、workspace-write、approve-for-me或full-access中的单个值；长权限说明放constraints。工具schema已明确字段和枚举，错误返回具体字段，不把不明确权限自动转换成更宽模式。mode=none时checks仅列运行测试NOT_RUN，静态调查PASS放children与memory。修复不会自动重发已失败的任务或修改其他聊天的审阅结论。

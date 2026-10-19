@@ -1,4 +1,4 @@
-# subagent-deepseek 0.9.1：先读我
+# subagent-deepseek 0.9.2：先读我
 
 ## 直接对Codex说
 

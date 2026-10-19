@@ -8,7 +8,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from .workflow import Board, install_policy
 from .dual_protocol import make_contract, build_handoff
 from .coordination import Coordination, parse_report, verify_report
-from .execution_plan import verify_checks, evidence_directory
+from .execution_plan import verify_checks, evidence_directory, ValidationPlan
 from .intake import intake
 from .workspaces import WorkspaceAccessError
 from .harness import HarnessBridge, HarnessError, inherited_permission
@@ -93,13 +93,14 @@ def register_workflow_tools(server, settings, path, direct):
 
     @server.tool(structured_output=True)
     async def project_dispatch(cwd: str, task_id: str, brief: str, ctx: Context,
-                               backend: Literal['auto', 'harness', 'direct'] = 'auto', codex_permission: str = '',
+                               backend: Literal['auto', 'harness', 'direct'] = 'auto',
+                               codex_permission: Literal['', 'read-only', 'workspace-write', 'approve-for-me', 'full-access'] = '',
                                task_kind: Literal['investigate', 'implement', 'test'] = 'implement',
                                allowed_files: list[str] | None = None, constraints: list[str] | None = None,
                                baseline: dict[str, str] | None = None, checks: list[str] | None = None,
                                decision: str = '', reuse_session: bool = True,
                                role: Literal['coordinator', 'worker'] = 'coordinator', max_workers: int = 4,
-                               validation: dict[str, object] | None = None,
+                               validation: ValidationPlan | None = None,
                                evidence_path: str = 'docs/agent/evidence') -> dict[str, object]:
         """Execute an existing project task with DeepSeek; main agent retains planning/review.
 
@@ -111,6 +112,10 @@ def register_workflow_tools(server, settings, path, direct):
         validation: mode inherit/smoke/targeted/full/stability/none/method-only, timing this-round/final,
         budget_minutes and resources. Unselected/deferred tests are NOT_RUN. evidence_path is project
         relative; it never grants write permission. Full logs stay in authorized evidence files.
+        Example validation={"mode":"none","timing":"this-round","resources":["source files only"]}.
+        codex_permission is exactly read-only/workspace-write/approve-for-me/full-access, not prose.
+        Put detailed permission restrictions in constraints. none-mode checks are NOT_RUN; static
+        investigation results belong in coordinator memory and child reports, not PASS test checks.
         The main agent chooses task_kind and supplies structured allowed_files, constraints,
         baseline (commit/diff/artifact identifiers), checks and current decision. Each dispatch
         records a new revision. Defaults retain compatibility; brief must still define scope.
@@ -128,12 +133,14 @@ def register_workflow_tools(server, settings, path, direct):
         if not brief.strip() or len(brief) > 80000:
             raise ToolError('brief must contain 1–80000 characters')
         try:
+            if isinstance(validation, ValidationPlan):
+                validation = validation.model_dump()
             contract = make_contract(task_kind, allowed_files, constraints, baseline, checks, role, max_workers, validation, evidence_path)
             evidence_directory(cwd, contract['evidence_root'], task_id, 1)
             if not isinstance(decision, str) or len(decision) > 16000:
                 raise ValueError('Invalid decision')
-        except ValueError:
-            raise ToolError('Invalid handoff contract; task was not submitted') from None
+        except ValueError as error:
+            raise ToolError('Invalid handoff contract: ' + str(error) + '; task was not submitted') from None
         backend = ('harness' if bridge else 'direct') if backend == 'auto' else backend
         if role == 'coordinator' and (backend != 'harness' or bridge is None):
             raise ToolError('Coordinator requires Harness native subagent tools; use explicit role=worker for leaf/direct execution')
@@ -143,7 +150,7 @@ def register_workflow_tools(server, settings, path, direct):
             try:
                 inherited_permission(codex_permission)
             except HarnessError:
-                raise ToolError('Current parent codex_permission is required') from None
+                raise ToolError('codex_permission must be exactly read-only, workspace-write, approve-for-me or full-access; do not append permission descriptions. Task was not submitted.') from None
         try:
             board = Board(settings, cwd)
             previous = board.read()['tasks'].get(task_id, {})

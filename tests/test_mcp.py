@@ -40,6 +40,17 @@ class McpTests(unittest.IsolatedAsyncioTestCase):
                     added = await client.call_tool('project_board', {'cwd': str(root), 'action': 'add',
                         'title': 'Bounded fix', 'description': 'Implement fixture task', 'acceptance': 'Fixture check'})
                     task_id = added.structuredContent['task_id']
+                    dispatch_schema = next(t.inputSchema for t in tools.tools if t.name == 'project_dispatch')
+                    self.assertEqual(dispatch_schema['$defs']['ValidationPlan']['properties']['resources']['type'], 'array')
+                    self.assertIn('workspace-write', dispatch_schema['properties']['codex_permission']['enum'])
+                    for bad, field in [({'validation': {'mode': 'none', 'resources': 'source files only'}}, 'resources'),
+                                       ({'codex_permission': 'workspace-write; read filesystem excluding credentials'}, 'codex_permission')]:
+                        rejected = await client.call_tool('project_dispatch', dict(cwd=str(root), task_id=task_id,
+                            brief='Only fixture', backend='direct', role='worker', **bad))
+                        self.assertTrue(rejected.isError)
+                        self.assertIn(field, str(rejected.content))
+                    unchanged = await client.call_tool('project_board', {'cwd':str(root), 'action':'read'})
+                    self.assertEqual(unchanged.structuredContent['tasks'][task_id]['state'],'pending')
                     dispatched = await client.call_tool('project_dispatch', {'cwd': str(root), 'task_id': task_id,
                         'brief': 'Modify only allowed fixture; run checks', 'backend': 'direct', 'role': 'worker'})
                     self.assertFalse(dispatched.isError)

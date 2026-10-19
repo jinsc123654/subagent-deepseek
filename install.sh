@@ -6,8 +6,8 @@ python_bin="${PYTHON_BIN:-python3}"
 "$python_bin" -c 'import sys; assert sys.version_info >= (3,11), "Python 3.11+ required"'
 "$python_bin" -m venv .venv
 .venv/bin/python -m pip install -r requirements.lock
-if [[ -f dist/subagent_deepseek-0.9.1-py3-none-any.whl ]]; then
-  .venv/bin/python -m pip install --no-deps dist/subagent_deepseek-0.9.1-py3-none-any.whl
+if [[ -f dist/subagent_deepseek-0.9.2-py3-none-any.whl ]]; then
+  .venv/bin/python -m pip install --no-deps dist/subagent_deepseek-0.9.2-py3-none-any.whl
 else
   .venv/bin/python -m pip install --no-deps .
 fi

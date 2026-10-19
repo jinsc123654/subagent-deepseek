@@ -156,7 +156,7 @@ class Wire:
     async def initialize(self) -> None:
         """Perform initialize/initialized before starting a thread."""
         await self.request('initialize', {
-            'clientInfo': {'name': 'subagent-deepseek', 'version': '0.9.1'},
+            'clientInfo': {'name': 'subagent-deepseek', 'version': '0.9.2'},
             'capabilities': {'experimentalApi': False, 'requestAttestation': False}})
         await self.send({'jsonrpc': '2.0', 'method': 'initialized'})
 
